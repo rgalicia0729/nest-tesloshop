@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProductsModule } from './products/products.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -14,9 +15,10 @@ import { ProductsModule } from './products/products.module';
       port: +process.env.PG_PORT,
       database: process.env.PG_DB_NAME,
       autoLoadEntities: true,
-      synchronize: true
+      synchronize: true,
     }),
-    ProductsModule
+    ProductsModule,
+    CommonModule
   ],
   controllers: [],
   providers: [],
