@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { validate as isUUID } from 'uuid';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -16,7 +16,9 @@ export class ProductsService {
     private readonly productRepository: Repository<Product>,
 
     @InjectRepository(ProductImage)
-    private readonly productImagesRepository: Repository<ProductImage>
+    private readonly productImagesRepository: Repository<ProductImage>,
+
+    private readonly dataSource: DataSource
   ) { }
 
   findAll(paginationDto: PaginationDto) {
@@ -65,18 +67,29 @@ export class ProductsService {
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
-    const product = await this.productRepository.preload({
-      id: id,
-      ...updateProductDto,
-      images: []
-    });
+    const { images, ...toUpdateData } = updateProductDto;
+
+    const product = await this.productRepository.preload({ id, ...toUpdateData });
 
     if (!product) throw new NotFoundException(`Product with id: ${id} not found`);
 
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      await this.productRepository.save(product);
-      return product;
+      if (images) {
+        await queryRunner.manager.delete(ProductImage, { product: { id } });
+        product.images = images.map(image => this.productImagesRepository.create({ url: image }));
+      }
+
+      await queryRunner.manager.save(product);
+      await queryRunner.commitTransaction();
+      await queryRunner.release()
+
+      return this.findOne(id);
     } catch (err) {
+      await queryRunner.rollbackTransaction();
       this.handleDBExeption(err);
     }
   }
@@ -97,5 +110,18 @@ export class ProductsService {
 
   private handleNotFound(id: string) {
     throw new NotFoundException(`The product with ID: ${id} not found`);
+  }
+
+  async deleteAllProducts() {
+    const query = this.productRepository.createQueryBuilder('product');
+
+    try {
+      return await query
+        .delete()
+        .where({})
+        .execute();
+    } catch (err) {
+      this.handleDBExeption(err)
+    }
   }
 }
