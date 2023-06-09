@@ -54,7 +54,7 @@ export class ProductsService {
     const { images = [], ...productDetails } = createProductDto;
 
     try {
-      const product = await this.productRepository.create({
+      const product = this.productRepository.create({
         ...productDetails,
         images: images.map((image) => this.productImagesRepository.create({ url: image }))
       });
