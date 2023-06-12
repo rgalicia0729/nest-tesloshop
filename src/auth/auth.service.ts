@@ -58,6 +58,26 @@ export class AuthService {
         }
     }
 
+    async refreshToken(user: User) {
+        return {
+            ...user,
+            token: this.getJwtToken({ id: user.id })
+        }
+    }
+
+    async deleteAllUsers() {
+        const query = this.userRepository.createQueryBuilder('users');
+
+        try {
+            return await query
+                .delete()
+                .where({})
+                .execute();
+        } catch (err) {
+            this.handleDBError(err);
+        }
+    }
+
     private handleDBError(err: any): never {
         if (err.code === '23505') {
             throw new BadRequestException(err.detail);
