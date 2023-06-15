@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { validate as isUUID } from 'uuid';
@@ -19,8 +25,8 @@ export class ProductsService {
     @InjectRepository(ProductImage)
     private readonly productImagesRepository: Repository<ProductImage>,
 
-    private readonly dataSource: DataSource
-  ) { }
+    private readonly dataSource: DataSource,
+  ) {}
 
   findAll(paginationDto: PaginationDto) {
     const { limit = 10, offset = 0 } = paginationDto;
@@ -38,10 +44,11 @@ export class ProductsService {
       product = await this.productRepository.findOneBy({ id: term });
     } else {
       const query = this.productRepository.createQueryBuilder('prod');
-      product = await query.where('slug =:slug OR UPPER(title) =:title', {
-        slug: term,
-        title: term.toUpperCase()
-      })
+      product = await query
+        .where('slug =:slug OR UPPER(title) =:title', {
+          slug: term,
+          title: term.toUpperCase(),
+        })
         .leftJoinAndSelect('prod.images', 'prodImages')
         .getOne();
     }
@@ -57,8 +64,10 @@ export class ProductsService {
     try {
       const product = this.productRepository.create({
         ...productDetails,
-        images: images.map((image) => this.productImagesRepository.create({ url: image })),
-        user
+        images: images.map((image) =>
+          this.productImagesRepository.create({ url: image }),
+        ),
+        user,
       });
       await this.productRepository.save(product);
 
@@ -71,9 +80,13 @@ export class ProductsService {
   async update(id: string, updateProductDto: UpdateProductDto, user: User) {
     const { images, ...toUpdateData } = updateProductDto;
 
-    const product = await this.productRepository.preload({ id, ...toUpdateData });
+    const product = await this.productRepository.preload({
+      id,
+      ...toUpdateData,
+    });
 
-    if (!product) throw new NotFoundException(`Product with id: ${id} not found`);
+    if (!product)
+      throw new NotFoundException(`Product with id: ${id} not found`);
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -82,14 +95,16 @@ export class ProductsService {
     try {
       if (images) {
         await queryRunner.manager.delete(ProductImage, { product: { id } });
-        product.images = images.map(image => this.productImagesRepository.create({ url: image }));
+        product.images = images.map((image) =>
+          this.productImagesRepository.create({ url: image }),
+        );
       }
 
       product.user = user;
 
       await queryRunner.manager.save(product);
       await queryRunner.commitTransaction();
-      await queryRunner.release()
+      await queryRunner.release();
 
       return this.findOne(id);
     } catch (err) {
@@ -109,7 +124,9 @@ export class ProductsService {
     }
 
     this.logger.error(err);
-    throw new InternalServerErrorException('Unexpected error, something went wrong');
+    throw new InternalServerErrorException(
+      'Unexpected error, something went wrong',
+    );
   }
 
   private handleNotFound(id: string) {
@@ -120,12 +137,9 @@ export class ProductsService {
     const query = this.productRepository.createQueryBuilder('product');
 
     try {
-      return await query
-        .delete()
-        .where({})
-        .execute();
+      return await query.delete().where({}).execute();
     } catch (err) {
-      this.handleDBExeption(err)
+      this.handleDBExeption(err);
     }
   }
 }

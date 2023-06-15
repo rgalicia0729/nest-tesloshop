@@ -8,14 +8,14 @@ import { initialData } from './data/seed-data';
 export class SeedService {
   constructor(
     private readonly productService: ProductsService,
-    private readonly authService: AuthService
-  ) { }
+    private readonly authService: AuthService,
+  ) {}
 
   async insertUsers(): Promise<User> {
     const { users } = initialData;
 
     const usersPromises = [];
-    users.forEach(user => {
+    users.forEach((user) => {
       usersPromises.push(this.authService.signup(user));
     });
 
@@ -28,7 +28,7 @@ export class SeedService {
     const { products } = initialData;
 
     const productsPromises = [];
-    products.forEach(product => {
+    products.forEach((product) => {
       productsPromises.push(this.productService.create(product, user));
     });
 
